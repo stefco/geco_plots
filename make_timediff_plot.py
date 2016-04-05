@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+
 import os
 import subprocess
 import math
 import sys
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 # exit if no arguments
 if len(sys.argv) == 1:
@@ -40,18 +42,21 @@ def remove_lines(string, num_lines):
 
 # lalapps to convert times to GPS time
 def tconvert(tstr=""):
+    print('converting times')
     return int(os.popen("lalapps_tconvert " + tstr).read())
 
 # make list of times that correspond to the necessary frame files
 def make_times_list(start_time , end_time):
+    print('making list of times')
     startn = int(tconvert(start_time) / 64)
     if end % 64 == 0:
         endn = ((tconvert(end_time) / 64) - 1)
     else:
         endn = int(tconvert(end_time) / 64)
-    times = [64 * i for i in range(startn, endn + 1)]
+    return [64 * i for i in range(startn, endn + 1)]
 
 def make_plot(x_axis, y_axis):
+    print('making plots')
     plt.plot(x_axis, y_axis)
     plt.xlabel('GPS Time')
     plt.ylabel('Offset')
@@ -59,16 +64,20 @@ def make_plot(x_axis, y_axis):
     plt.savefig('Time difference from ' + start_time + 'until ' + end_time + '.png')
 
 def main(start_time, end_time):
+    x = []
+    t = []
     for time in make_times_list(start_time, end_time):
         path = time + ".dat"
         if os.path.exists(path):
             # set up the processes for acquiring and processing the data
+            print('loading file')
             with open(path,'r') as infile:
                 data_string = remove_header_and_text(infile.read())
             # append arrays to existing timeseries and times
             x += [float(x) for x in data_string.split(',')]
             t += [time + dt/16 for dt in range(1024)]
+        else:
+            print('file' + path + 'not found.')
     make_plot(x, t)
-        # FIXME you should handle the case where the file doesn't exist
 
-
+main(start_time, end_time)
