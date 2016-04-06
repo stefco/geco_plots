@@ -5,6 +5,10 @@ import subprocess
 import math
 import sys
 import matplotlib.pyplot as plt
+import numpy as np
+import collections
+
+bit_rate = 16
 
 # exit if no arguments
 if len(sys.argv) == 1:
@@ -67,27 +71,28 @@ def make_plot(x_axis, y_axis):
     plt.savefig('Time difference from ' + start + ' until ' + end + '.png')
 
 def main(start_time, end_time):
-    x = [ ] 
-    t = [ ]
+    num_seconds = (len(make_times_list(start_time , end_time))) * 64
+    time_series = np.zeros(num_seconds * bit_rate)
+    t = np.zeros(num_seconds * bit_rate)
+    n_skip = 0
+    current_pos = 0
     for time in make_times_list(start_time, end_time):
         path = str(time) + ".dat"
-        if int(time) % 40000 == 0:
-            print 'Just checking in ' + str(time)
-            # set up the processes for acquiring and processing the data
-            with open(path,'r') as infile:
-                data_string = remove_header_and_text(infile.read())
-            # append arrays to existing timeseries and times
-            x += [float(x) for x in data_string.split(',')]
-            t += [time + dt/16 for dt in range(1024)]
-        elif os.path.exists(path):
-            # set up the processes for acquiring and processing the data
-            with open(path,'r') as infile:
-                data_string = remove_header_and_text(infile.read())
-            # append arrays to existing timeseries and times
-            x += [float(x) for x in data_string.split(',')]
-            t += [time + dt/16 for dt in range(1024)]
+        if os.path.exists(path):
+	    # replaces 0s in time_series and t with values of the time
+	    # series at that position
+	    with open(path,'r') as infile:
+                time_series[current_pos : current_pos + (64 * bit_rate)] = \
+                    np.fromstring(remove_header_and_text(infile.read()) , sep= ',')
+                t[current_pos : current_pos +(64 * bit_rate)] = \
+                    np.linspace(start = time, stop = time + 64, num = 64 * bit_rate, 
+                    endpoint = False)
+                current_pos += 64 * bit_rate
         else:
             print('file ' + path + ' not found.')
-    make_plot(t, x)
+            n_skip += 64 * bit_rate
+    time_series = time_series[: len(time_series) - n_skip]
+    t = t[:len(t) - n_skip]
+    make_plot(t, time_series)
 
 main(start, end)
