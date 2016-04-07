@@ -10,20 +10,25 @@ import collections
 
 bit_rate = 16
 
-# exit if no arguments
+#exit if no arguments
 if len(sys.argv) == 1:
     print 'Not enough arguments.'
     print 'For a input format type \'make_timediff_plot.py -h\''
     exit(1)
 
-if sys.argv[1] == '-h':
-    print 'python make_timediff_plot.py \'start date\' \'end date\''
+elif sys.argv[1] == '-h':
+    print 'python make_timediff_plot.py \'start date\' \'end date\' \'channel\''
     print 'Enter dates as Month Day, Year hh:mm:ss'
+    print 'If you do not specifiy a channel the program will look for files in'
+    print 'current directory'
     exit()
+
 else:
     start = sys.argv[1]
     end = sys.argv[2]
     channel = sys.argv[3]
+
+arg_n = len(sys.argv)
 
 # remove the first 6 lines and the string "Data: "
 def remove_header_and_text(string):
@@ -63,6 +68,14 @@ def make_times_list(s_time , e_time):
     return [64 * i for i in range(startn, endn + 1)]
     print 'made a times array'
 
+#Defines the path where the file is from input
+def make_path_name(file_name):
+    if arg_n == 3:
+        path = str(file_name) + '.dat'
+    elif arg_n  == 4:
+        path = channel + '/' + str(file_name) + ".dat"
+    return path
+
 def make_plot(x_axis, y_axis):
     print('making plots')
     plt.plot(x_axis, y_axis * 1000000)
@@ -72,13 +85,14 @@ def make_plot(x_axis, y_axis):
     plt.savefig('Time difference from ' + start + ' until ' + end + '.png')
 
 def main(start_time, end_time):
+    print  arg_n
     num_seconds = (len(make_times_list(start_time , end_time))) * 64
     time_series = np.zeros(num_seconds * bit_rate)
     t = np.zeros(num_seconds * bit_rate)
     n_skip = 0
     current_pos = 0
     for time in make_times_list(start_time, end_time):
-        path = channel + str(time) + ".dat"
+        path = make_path_name(time)
         if os.path.exists(path):
 	    # replaces 0s in time_series and t with values of the time
 	    # series at that position
