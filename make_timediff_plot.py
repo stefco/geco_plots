@@ -78,7 +78,10 @@ def make_path_name(file_name):
 
 def make_plot(x_axis, y_axis):
     print('making plots')
-    plt.plot(x_axis, y_axis * 1000000)
+    #plots the data and a line of best fir on the same graph
+    plt.plot(x_axis, y_axis * 1000000, '#b98bdc', \
+        x_axis, np.poly1d(np.polyfit(x_axis, y_axis * 1000000, 1))(x_axis), '#efefef')
+    #TODO add a box in the corner to display the slop of the line of best fit
     plt.xlabel('GPS Time')
     plt.ylabel('Offset [$\mu$s]')
     plt.title('Time difference from ' + start + ' until ' + end)
