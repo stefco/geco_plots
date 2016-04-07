@@ -23,6 +23,7 @@ if sys.argv[1] == '-h':
 else:
     start = sys.argv[1]
     end = sys.argv[2]
+    channel = sys.argv[3]
 
 # remove the first 6 lines and the string "Data: "
 def remove_header_and_text(string):
@@ -64,9 +65,9 @@ def make_times_list(s_time , e_time):
 
 def make_plot(x_axis, y_axis):
     print('making plots')
-    plt.plot(x_axis, y_axis)
+    plt.plot(x_axis, y_axis * 1000000)
     plt.xlabel('GPS Time')
-    plt.ylabel('Offset')
+    plt.ylabel('Offset [$\mu$s]')
     plt.title('Time difference from ' + start + ' until ' + end)
     plt.savefig('Time difference from ' + start + ' until ' + end + '.png')
 
@@ -77,7 +78,7 @@ def main(start_time, end_time):
     n_skip = 0
     current_pos = 0
     for time in make_times_list(start_time, end_time):
-        path = str(time) + ".dat"
+        path = channel + str(time) + ".dat"
         if os.path.exists(path):
 	    # replaces 0s in time_series and t with values of the time
 	    # series at that position
@@ -89,7 +90,7 @@ def main(start_time, end_time):
                     endpoint = False)
                 current_pos += 64 * bit_rate
         else:
-            print('file ' + path + ' not found.')
+            print('file ' + str(time) + ' not found.')
             n_skip += 64 * bit_rate
     time_series = time_series[: len(time_series) - n_skip]
     t = t[:len(t) - n_skip]
