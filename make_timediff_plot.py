@@ -9,6 +9,7 @@ import numpy as np
 import collections
 
 bit_rate = 16
+micros_to_seconds = 1000000
 
 #exit if no arguments
 if len(sys.argv) == 1:
@@ -78,13 +79,23 @@ def make_path_name(file_name):
 
 def make_plot(x_axis, y_axis):
     print('making plots')
-    #plots the data and a line of best fir on the same graph
-    plt.plot(x_axis, y_axis * 1000000, '#b98bdc', \
-        x_axis, np.poly1d(np.polyfit(x_axis, y_axis * 1000000, 1))(x_axis), '#efefef')
-    #TODO add a box in the corner to display the slop of the line of best fit
+    y_axis = y_axis * micros_to_seconds
+    #creates an array of y-values for the line of best fit
+    y_axis_lobf = np.poly1d(np.polyfit(x_axis, y_axis, 1))(x_axis)
+    y_dif = y_axis - y_axis_lobf
+    #plots the data and a line of best fit on the same graph
+    plt.figure(1)
+    plt.subplot(211)
+    plt.plot(x_axis, y_axis, '#ff0000', \
+        x_axis, y_axis_lobf, '#617d8d')
+    #TODO add a legend in the upper right corner to display the slop of the line of best fit
     plt.xlabel('GPS Time')
     plt.ylabel('Offset [$\mu$s]')
     plt.title('Time difference from ' + start + ' until ' + end)
+    #makes histogram of the difference between data and line of best fit
+    plt.subplot(212)
+    n, bins, patches = plt.hist( (y_axis - y_axis_lobf), 20, facecolor = '#139a0e')
+    plt.xlabel('Time difference [$\mu$s]')
     plt.savefig('Time difference from ' + start + ' until ' + end + '.png')
 
 def main(start_time, end_time):
