@@ -9,27 +9,26 @@ import numpy as np
 import collections
 
 bit_rate = 16
-micros_to_seconds = 1000000
+second_to_micros = 1000000
+arg_n = len(sys.argv)
 
 #exit if no arguments
-if len(sys.argv) == 1:
+if arg_n == 1:
     print 'Not enough arguments.'
     print 'For a input format type \'make_timediff_plot.py -h\''
     exit(1)
 
 elif sys.argv[1] == '-h':
-    print 'python make_timediff_plot.py \'start date\' \'end date\' \'channel\''
+    print 'python make_timediff_plot.py \'start date\' \'end date\' [input_directory]'
     print 'Enter dates as Month Day, Year hh:mm:ss'
-    print 'If you do not specifiy a channel the program will look for files in'
-    print 'current directory'
+    print 'If you do not specifiy an input directory the program will look for'
+    print ' files in the current directory'
     exit()
 
 else:
     start = sys.argv[1]
     end = sys.argv[2]
     channel = sys.argv[3]
-
-arg_n = len(sys.argv)
 
 # remove the first 6 lines and the string "Data: "
 def remove_header_and_text(string):
@@ -51,12 +50,12 @@ def remove_lines(string, num_lines):
         n += 1
     return string[i+1:]
 
-# lalapps to convert times to GPS time
+#lalapps to convert times to GPS time
 def tconvert(tstr=""):
     print('converting times')
     return int(os.popen("lalapps_tconvert " + tstr).read())
 
-# make list of times that correspond to the necessary frame files
+#make list of times that correspond to the necessary frame files
 def make_times_list(s_time , e_time):
     print('making list of times')
     gps_start = tconvert(s_time)
@@ -69,6 +68,33 @@ def make_times_list(s_time , e_time):
     return [64 * i for i in range(startn, endn + 1)]
     print 'made a times array'
 
+#makes arrays of min max and mean of each frame file
+def min_max_mean_avg(s_time, e_time):
+    t = make_times_list(s_time, e_time)
+    time_array = np.zeros(len(t))
+    min_array = np.zeros(len(t))
+    max_array = np.zeros(len(t))
+    mean_array = np.zeros(len(t))
+    n_skip = 0
+    current_pos = 0
+    for time in t:
+        path = make_path_name(time)
+        if os.path.exists(path):
+            with open(path,'r') as infile:
+                infile_array = np.fromstring(remove_header_and_text(infile.read()) , sep= ',')
+                min_array[current_pos] = min(infile_array)
+                max_array[current_pos] = max(infile_array)
+                mean_array[current_pos] = np.mean(infile_array)
+                time_array[current_pos] = time
+                current_pos += 1
+        else:
+            n_skip += 1
+    min_array = min_array[:len(min_array) - n_skip]
+    max_array = max_array[:len(max_array) - n_skip]
+    mean_array = mean_array[:len(mean_array) - n_skip]
+    time_array = time_array[:len(time_array) - n_skip]
+    return (time_array, min_array, max_array, mean_array)
+
 #Defines the path where the file is from input
 def make_path_name(file_name):
     if arg_n == 3:
@@ -79,27 +105,33 @@ def make_path_name(file_name):
 
 def make_plot(x_axis, y_axis):
     print('making plots')
-    y_axis = y_axis * micros_to_seconds
-    #creates an array of y-values for the line of best fit
-    y_axis_lobf = np.poly1d(np.polyfit(x_axis, y_axis, 1))(x_axis)
-    y_dif = y_axis - y_axis_lobf
+    y_axis = y_axis * second_to_micros
+    mmavg = min_max_mean_avg(start, end)
+    # Creates an array for a line of best fit from the mean of each frame file
+    lobf_array = np.polyfit(mmavg[0], mmavg[3], 1)
+    x_axis_lobf = mmavg[0]
+    y_axis_lobf = np.poly1d(lobf_array)(x_axis_lobf) * second_to_micros
+    #Makes an array of the difference between the y-axis and the line of best
+    #fit at that point
+    tmp = lobf_array[0] * second_to_micros * x_axis
+    tmp += lobf_array[1] * second_to_micros
+    tmp -= y_axis
+    y_dif = tmp
     #plots the data and a line of best fit on the same graph
     plt.figure(1)
     plt.subplot(211)
-    plt.plot(x_axis, y_axis, '#ff0000', \
-        x_axis, y_axis_lobf, '#617d8d')
+    plt.plot(x_axis, y_axis, '#ff0000', x_axis_lobf, y_axis_lobf, '#617d8d')
     #TODO add a legend in the upper right corner to display the slop of the line of best fit
     plt.xlabel('GPS Time')
     plt.ylabel('Offset [$\mu$s]')
     plt.title('Time difference from ' + start + ' until ' + end)
     #makes histogram of the difference between data and line of best fit
     plt.subplot(212)
-    n, bins, patches = plt.hist( (y_axis - y_axis_lobf), 20, facecolor = '#139a0e')
+    n, bins, patches = plt.hist(y_dif, 20, facecolor = '#139a0e')
     plt.xlabel('Time difference [$\mu$s]')
     plt.savefig('Time difference from ' + start + ' until ' + end + '.png')
 
 def main(start_time, end_time):
-    print  arg_n
     num_seconds = (len(make_times_list(start_time , end_time))) * 64
     time_series = np.zeros(num_seconds * bit_rate)
     t = np.zeros(num_seconds * bit_rate)
