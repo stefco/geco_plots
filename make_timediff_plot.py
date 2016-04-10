@@ -52,12 +52,10 @@ def remove_lines(string, num_lines):
 
 #lalapps to convert times to GPS time
 def tconvert(tstr=""):
-    print('converting times')
     return int(os.popen("lalapps_tconvert " + tstr).read())
 
 #make list of times that correspond to the necessary frame files
 def make_times_list(s_time , e_time):
-    print('making list of times')
     gps_start = tconvert(s_time)
     gps_end = tconvert(e_time)
     startn = int(gps_start) / 64
@@ -66,17 +64,21 @@ def make_times_list(s_time , e_time):
     else:
         endn = int(gps_end) / 64
     return [64 * i for i in range(startn, endn + 1)]
-    print 'made a times array'
 
-#makes arrays of min max and mean of each frame file
-def min_max_mean_avg(s_time, e_time):
+#Makes arrays of min max and mean of each frame file is_data_good approves
+def min_max_mean(s_time, e_time):
+    good_indeces = is_data_good(s_time, e_time)
     t = make_times_list(s_time, e_time)
+    print len(good_indeces)
     time_array = np.zeros(len(t))
     min_array = np.zeros(len(t))
     max_array = np.zeros(len(t))
     mean_array = np.zeros(len(t))
     n_skip = 0
     current_pos = 0
+    for i in range(0, len(t)):
+        if good_indeces[i] == 0:
+            t[i] = 0
     for time in t:
         path = make_path_name(time)
         if os.path.exists(path):
@@ -95,7 +97,7 @@ def min_max_mean_avg(s_time, e_time):
     time_array = time_array[:len(time_array) - n_skip]
     return (time_array, min_array, max_array, mean_array)
 
-#Defines the path where the file is from input
+#Defines the pa  th where the file is from input
 def make_path_name(file_name):
     if arg_n == 3:
         path = str(file_name) + '.dat'
@@ -103,10 +105,51 @@ def make_path_name(file_name):
         path = channel + '/' + str(file_name) + ".dat"
     return path
 
-def make_plot(x_axis, y_axis):
+#Creates an array whose vallues are 0 or 1 depending on if the corresponding
+#frame file has reasonable data. This roundabout method is used because using
+#the convention found in other section of this code gives an array with times
+#in scientific notation, which cannot then be used to specify a path name
+#This is done to avoid these outliers affecting lobf calculations
+def is_data_good(start_time, end_time):
+    current_pos = 0
+    n_skip = 0
+    good_files = np.zeros(len(make_times_list(start_time, end_time)))
+    for time in make_times_list(start_time, end_time):
+        #TODO maybe make these next three lines a seperate function
+        path =  make_path_name(time)
+        if os.path.exists(path):
+            with open(path, 'r') as infile:
+                infile_array = np.fromstring(remove_header_and_text(infile.read()) \
+                    , sep = ',')
+                if np.mean(infile_array) < 0:
+                    lower_lim = abs(max(infile_array))
+                    upper_lim = abs(min(infile_array))
+                elif np.mean(infile_array) > 0:
+                    lower_lim = min(infile_array)
+                    upper_lim = max(infile_array)
+                elif np.mean(infile_array) == 0:
+                    print 'It seems there was no signal at ' + time
+                    n_skip += 1
+                if lower_lim * second_to_micros > 0.01 and upper_lim * \
+                    second_to_micros < 4:
+                    good_files[current_pos] = 1
+                    current_pos += 1
+                elif lower_lim * second_to_micros < 0.01:
+                    print 'Signal at ' + time + ' is anomalously small'
+                    n_skip += 1
+                    current_pos += 1
+                elif upper_lim * second_to_micros > 4:
+                    print 'Signal at ' + time + ' is anomalously large'
+                    n_skip +=1
+                    current_pos += 1
+    return good_files
+
+def make_timediff_plot(x_axis, y_axis):
     print('making plots')
     y_axis = y_axis * second_to_micros
-    mmavg = min_max_mean_avg(start, end)
+    mmavg = min_max_mean(start, end)
+    print len(mmavg[0])
+    print len(mmavg[3])
     # Creates an array for a line of best fit from the mean of each frame file
     lobf_array = np.polyfit(mmavg[0], mmavg[3], 1)
     x_axis_lobf = mmavg[0]
@@ -131,7 +174,9 @@ def make_plot(x_axis, y_axis):
     plt.xlabel('Time difference [$\mu$s]')
     plt.savefig('Time difference from ' + start + ' until ' + end + '.png')
 
-def main(start_time, end_time):
+#returns a duple whose elements are the gps times and the corresponding file
+#value from the input file
+def time_timeseries(start_time, end_time):
     num_seconds = (len(make_times_list(start_time , end_time))) * 64
     time_series = np.zeros(num_seconds * bit_rate)
     t = np.zeros(num_seconds * bit_rate)
@@ -140,13 +185,13 @@ def main(start_time, end_time):
     for time in make_times_list(start_time, end_time):
         path = make_path_name(time)
         if os.path.exists(path):
-	    # replaces 0s in time_series and t with values of the time
-	    # series at that position
-	    with open(path,'r') as infile:
+            # replaces 0s in time_series and t with values of the time
+            # series at that position
+            with open(path,'r') as infile:
                 time_series[current_pos : current_pos + (64 * bit_rate)] = \
                     np.fromstring(remove_header_and_text(infile.read()) , sep= ',')
                 t[current_pos : current_pos +(64 * bit_rate)] = \
-                    np.linspace(start = time, stop = time + 64, num = 64 * bit_rate, 
+                    np.linspace(start = time, stop = time + 64, num = 64 * bit_rate,
                     endpoint = False)
                 current_pos += 64 * bit_rate
         else:
@@ -154,6 +199,11 @@ def main(start_time, end_time):
             n_skip += 64 * bit_rate
     time_series = time_series[: len(time_series) - n_skip]
     t = t[:len(t) - n_skip]
-    make_plot(t, time_series)
+    return (t, time_series)
+
+def main(start_time, end_time):
+    t = time_timeseries(start_time, end_time)[0]
+    time_series = time_timeseries(start_time, end_time)[1]
+    make_timediff_plot(t, time_series)
 
 main(start, end)
