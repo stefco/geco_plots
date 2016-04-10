@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#_!/usr/bin/env python
 
 import os
 import subprocess
@@ -128,28 +128,24 @@ def is_data_good(start_time, end_time):
                     lower_lim = min(infile_array)
                     upper_lim = max(infile_array)
                 elif np.mean(infile_array) == 0:
-                    print 'It seems there was no signal at ' + time
-                    n_skip += 1
+                    print 'It seems there was no signal at ' + str(time)
                 if lower_lim * second_to_micros > 0.01 and upper_lim * \
                     second_to_micros < 4:
                     good_files[current_pos] = 1
                     current_pos += 1
                 elif lower_lim * second_to_micros < 0.01:
-                    print 'Signal at ' + time + ' is anomalously small'
-                    n_skip += 1
+                    print 'Signal at ' + str(time) + ' is anomalously small'
                     current_pos += 1
                 elif upper_lim * second_to_micros > 4:
-                    print 'Signal at ' + time + ' is anomalously large'
-                    n_skip +=1
+                    print 'Signal at ' + str(time) + ' is anomalously large'
                     current_pos += 1
     return good_files
 
 def make_timediff_plot(x_axis, y_axis):
     print('making plots')
+    print len(y_axis)
     y_axis = y_axis * second_to_micros
     mmavg = min_max_mean(start, end)
-    print len(mmavg[0])
-    print len(mmavg[3])
     # Creates an array for a line of best fit from the mean of each frame file
     lobf_array = np.polyfit(mmavg[0], mmavg[3], 1)
     x_axis_lobf = mmavg[0]
@@ -160,6 +156,7 @@ def make_timediff_plot(x_axis, y_axis):
     tmp += lobf_array[1] * second_to_micros
     tmp -= y_axis
     y_dif = tmp
+    print len(y_axis)
     #plots the data and a line of best fit on the same graph
     plt.figure(1)
     plt.subplot(211)
