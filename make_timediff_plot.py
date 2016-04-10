@@ -129,6 +129,7 @@ def is_data_good(start_time, end_time):
                     upper_lim = max(infile_array)
                 elif np.mean(infile_array) == 0:
                     print 'It seems there was no signal at ' + str(time)
+                    current_pos +=1
                 if lower_lim * second_to_micros > 0.01 and upper_lim * \
                     second_to_micros < 4:
                     good_files[current_pos] = 1
