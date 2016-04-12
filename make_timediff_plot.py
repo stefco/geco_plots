@@ -9,13 +9,15 @@ import numpy as np
 import collections
 
 bit_rate = 16
-second_to_micros = 1000000
+micros_per_second= 1000000
+second_per_week = 604800
 arg_n = len(sys.argv)
 
 #exit if no arguments
 if arg_n == 1:
     print 'Not enough arguments.'
     print 'For a input format type \'make_timediff_plot.py -h\''
+    print 'For channels and directory names type \'make_timediff_plot.py -c\''
     exit(1)
 
 elif sys.argv[1] == '-h':
@@ -23,6 +25,31 @@ elif sys.argv[1] == '-h':
     print 'Enter dates as Month Day, Year hh:mm:ss'
     print 'If you do not specifiy an input directory the program will look for'
     print ' files in the current directory'
+    exit()
+
+elif sys.srgv[1] == '-c':
+    print 'hanford_cesium_msr    = H1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_1'
+    print 'hanford_cesium_ex     = H1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
+    print 'hanford_cesium_ey     = H1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
+    print 'hanford_nts_msr       = H1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_2'
+    print 'hanford_cnsii_ex      = H1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
+    print 'hanford_cnsii_ey      = H1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
+    print 'livingston_cesium_msr = L1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_1'
+    print 'livingston_cesium_ex  = L1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
+    print 'livingston_cesium_ey  = L1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
+    print 'livingston_nts_msr    = L1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_2'
+    print 'livingston_cnsii_ex   = L1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
+    print 'livingston_cnsii_ey   = L1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
+    print 'hanford_duotone_ex    = H1:CAL-PCALX_FPGA_DTONE_IN1_DQ'
+    print 'hanford_duotone_ey    = H1:CAL-PCALY_FPGA_DTONE_IN1_DQ'
+    print 'livingston_duotone_ex    = L1:CAL-PCALX_FPGA_DTONE_IN1_DQ'
+    print 'livingston_duotone_ex    = L1:CAL-PCALY_FPGA_DTONE_IN1_DQ'
+    print 'hanford_irigb_ex      = H1:CAL-PCALX_IRIGB_OUT_DQ'
+    print 'hanford_irigb_ey      = H1:CAL-PCALY_IRIGB_OUT_DQ'
+    print 'livingston_irigb_ex      = L1:CAL-PCALX_IRIGB_OUT_DQ'
+    print 'livingston_irigb_ey      = L1:CAL-PCALY_IRIGB_OUT_DQ'
+    print 'hanford_duotone_filtered_ex = H1:CAL-PCALX_DAC_FILT_DTONE_OUT_DQ'
+    print 'hanford_duotone_filtered_ey = H1:CAL-PCALY_DAC_FILT_DTONE_OUT_DQ'
     exit()
 
 else:
@@ -111,8 +138,8 @@ def make_path_name(file_name):
 #in scientific notation, which cannot then be used to specify a path name
 #This is done to avoid these outliers affecting lobf calculations
 def is_data_good(start_time, end_time):
+    print 'weeding out anomalous data'
     current_pos = 0
-    n_skip = 0
     good_files = np.zeros(len(make_times_list(start_time, end_time)))
     for time in make_times_list(start_time, end_time):
         #TODO maybe make these next three lines a seperate function
@@ -121,6 +148,23 @@ def is_data_good(start_time, end_time):
             with open(path, 'r') as infile:
                 infile_array = np.fromstring(remove_header_and_text(infile.read()) \
                     , sep = ',')
+<<<<<<< HEAD
+                if np.mean(infile_array) == 0:
+                    print 'It seems there was no signal at ' + str(time)
+                elif abs(min(infile_array)) * micros_per_second< .01:
+                    print 'The data at ' + str(time) + ' is anomalously small.'
+                elif abs(max(infile_array)) * micros_per_second > 4:
+                    print 'The data at ' + str(time) + ' is anomalously large.'
+                else:
+                    good_files[current_pos] = 1
+                current_pos += 1
+    return good_files
+
+def make_timediff_plot(x_axis, y_axis):
+    y_axis = y_axis * micros_per_second
+    mmavg = min_max_mean(start, end)
+    print 'generating line of best fit'
+=======
                 if np.mean(infile_array) < 0:
                     lower_lim = abs(max(infile_array))
                     upper_lim = abs(min(infile_array))
@@ -147,22 +191,26 @@ def make_timediff_plot(x_axis, y_axis):
     print len(y_axis)
     y_axis = y_axis * second_to_micros
     mmavg = min_max_mean(start, end)
+>>>>>>> 259e104e1cc1044e3038cb5256ddbc27a0685135
     # Creates an array for a line of best fit from the mean of each frame file
     lobf_array = np.polyfit(mmavg[0], mmavg[3], 1)
     x_axis_lobf = mmavg[0]
-    y_axis_lobf = np.poly1d(lobf_array)(x_axis_lobf) * second_to_micros
+    y_axis_lobf = np.poly1d(lobf_array)(x_axis_lobf) * micros_per_second
     #Makes an array of the difference between the y-axis and the line of best
     #fit at that point
-    tmp = lobf_array[0] * second_to_micros * x_axis
-    tmp += lobf_array[1] * second_to_micros
+    tmp = lobf_array[0] * micros_per_second * x_axis
+    tmp += lobf_array[1] * micros_per_second 
     tmp -= y_axis
     y_dif = tmp
     print len(y_axis)
     #plots the data and a line of best fit on the same graph
+    print 'making plots'
     plt.figure(1)
     plt.subplot(211)
-    plt.plot(x_axis, y_axis, '#ff0000', x_axis_lobf, y_axis_lobf, '#617d8d')
-    #TODO add a legend in the upper right corner to display the slop of the line of best fit
+    plt.plot(x_axis, y_axis, '#ff0000')
+    plt.plot( x_axis_lobf, y_axis_lobf, '#617d8d', label = 'slope = ' + \
+        str(lobf_array[0] * micros_per_second  * second_per_week) + '[$\mu$s/week]')
+    plt.legend(loc='best', fancybox=True, framealpha=0.5)
     plt.xlabel('GPS Time')
     plt.ylabel('Offset [$\mu$s]')
     plt.title('Time difference from ' + start + ' until ' + end)
