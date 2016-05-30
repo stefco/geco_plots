@@ -6,8 +6,7 @@ import math
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib
-import fileinput
+import matplotlib.gridspec as gs
 import argparse
 
 micros_per_second = 1000000
@@ -63,17 +62,26 @@ def make_plot(x_axis, y_axis):
     tmp -= y_axis
     y_dif = tmp
     print 'making plots'
-    fig = plt.figure()
-    plt.suptitle('WHATSHOULD THE TITLE OF THIS BE?')
-    ax1 = fig.add_subplot(211)
+    fig = plt.figure(figsize=(6.5,9))
+    plt.suptitle('Characterization of diagnostic timing system 1PPS system, '+location)
+    ax1 = fig.add_subplot(311)
+    ax1.set_title('Line of best fit versus offset')
     ax1.plot(x_axis, y_axis, '#ff0000')
     ax1.plot(x_axis, y_axis_lobf, '#617d8d')
     ax1.set_xlabel('GPS time')
     ax1.set_ylabel('Offset [$\mu$s]')
-    ax2 = fig.add_subplot(212)
+    ax3 = fig.add_subplot(313)
     n, bins, patches = plt.hist(y_dif, 20, facecolor = '#139a0e')
-    ax2.set_xlabel('$\Delta$Time difference [$\mu$s]')
+    ax3.set_xlabel('\Delta t [$\mu$s]')
+    ax3.set_ylabel('Frequency')
+    ax3.set_title('histogram of the residual')
+    ax2 = fig.add_subplot(312)
+    ax2.plot(x_axis, y_dif)
+    ax2.set_xlabel('GPS time [s]')
+    ax2.set_title('Residual of the line of best fit')
+    ax2.set_ylabel('Difference [$\mu$s]')
     print drift_coef
+    plt.tight_layout()
     fig.savefig('FILENAME.png')
 
 def main():
