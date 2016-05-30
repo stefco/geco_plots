@@ -12,7 +12,7 @@ micros_per_second = 1000000
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', help='the location of the trend data being used')
-parser.add_argument('-t')
+parser.add_argument('-t', help='the trend, i.e. min, mean, or max. Default it mean')
 args = parser.parse_args()
 location = vars(args)['l']
 if vars(args)['t'] == None:
@@ -34,11 +34,14 @@ def make_time_series():
             values = [float(x) for x in line.split('\t')]
             if len(values) == 2:
                 if values[1] == 0:
-                    print 'It seems that the signal was off during some part of ' + str(i[0])
+                    print 'It seems that the signal was off during some part o'\
+                        'f ' + str(i[0])
                 elif abs(values[1]) * micros_per_second < .01:
-                    print 'The data at ' + str(values[0]) + ' is anomalously small.'
+                    print 'The data at ' + str(values[0]) + ' is anomalously s'\
+                        'mall.'
                 elif abs(values[1]) * micros_per_second > 4:
-                    print 'The data at ' + str(values[0]) + ' is anomalously large.'
+                    print 'The data at ' + str(values[0]) + ' is anomalously l'\
+                        'arge.'
                 else:
                     times.append(values[0])
                     trend.append(values[1])
@@ -63,6 +66,7 @@ def make_plot(x_axis, y_axis):
     print 'making plots'
     fig = plt.figure(figsize=(6.5,9))
     plt.suptitle('Characterization of diagnostic timing system 1PPS system, '+location)
+    plt.subplots_adjust(top=0.88888888, bottom=0.1)
     ax1 = fig.add_subplot(311)
     ax1.set_title('Line of best fit versus offset')
     ax1.plot(x_axis, y_axis, '#ff0000')
@@ -80,7 +84,8 @@ def make_plot(x_axis, y_axis):
     ax2.set_title('Residual of the line of best fit')
     ax2.set_ylabel('Difference [$\mu$s]')
     print drift_coef
-    fig.tight_layout()
+    plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
+    plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
     fig.savefig('FILENAME.png')
 
 def main():
