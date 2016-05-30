@@ -1,4 +1,4 @@
-#_!/usr/bin/env python
+#!/usr/bin/env python
 
 import os
 import subprocess
@@ -6,7 +6,6 @@ import math
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.gridspec as gs
 import argparse
 
 micros_per_second = 1000000
@@ -72,7 +71,7 @@ def make_plot(x_axis, y_axis):
     ax1.set_ylabel('Offset [$\mu$s]')
     ax3 = fig.add_subplot(313)
     n, bins, patches = plt.hist(y_dif, 20, facecolor = '#139a0e')
-    ax3.set_xlabel('\Delta t [$\mu$s]')
+    ax3.set_xlabel('$\Delta$t [$\mu$s]')
     ax3.set_ylabel('Frequency')
     ax3.set_title('histogram of the residual')
     ax2 = fig.add_subplot(312)
@@ -81,7 +80,7 @@ def make_plot(x_axis, y_axis):
     ax2.set_title('Residual of the line of best fit')
     ax2.set_ylabel('Difference [$\mu$s]')
     print drift_coef
-    plt.tight_layout()
+    fig.tight_layout()
     fig.savefig('FILENAME.png')
 
 def main():
