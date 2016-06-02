@@ -20,13 +20,13 @@ parser.add_argument('-f', help='Allows you to specify whether to use the line'\
     +' and the latter for the GPS clock.')
 args = parser.parse_args()
 location = vars(args)['l']
-fitted_function = 'lobf'
+fitted_function_description = 'lobf'
 if vars(args)['t'] == None:
     trend = 'Mean'
 else:
     trend = vars(args)['t']
 if vars(args)['f'] == 'constant' or vars(args)['f'] == 'lobf':
-    fitted_function = vars(args)['f']
+    fitted_function_description = vars(args)['f']
 
 #Takes input from geco_trend_dump and makes an array of times and corresponding
 #trend values for that time
@@ -73,26 +73,46 @@ def make_plot(statistics_dictionary):
     for extension in valid_trend_extensions:
         stat[extension]['trend'] = [i * micros_per_second for i in\
             stat[extension]['trend']]
-    #creates array with slope and y-intercept of line of best fit of the mean
-    lobf_array = np.polyfit(stat['mean']['times'], stat['mean']['trend'], 1)
-    #dimensionless quantity that characterizes drift
-    drift_coef = lobf_array[0]/micros_per_second
-    mean_lobf = np.poly1d(lobf_array)(stat['mean']['times'])
-    #creates array with the difference between line of best fit and mean value
-    tmp = [lobf_array[0] * i for i in stat['mean']['times']]
-    tmp += lobf_array[1]
-    tmp -= stat['mean']['trend']
-    mean_dif = tmp
-    std_dev_mean_dif = np.std(mean_dif)
+    if fitted_function_description == 'lobf':
+        #creates array with slope and y-intercept of line of best fit of the mean
+        lobf_array = np.polyfit(stat['mean']['times'], stat['mean']['trend'], 1)
+        #dimensionless quantity that characterizes drift
+        drift_coef = lobf_array[0]/micros_per_second
+        fitted_function = np.poly1d(lobf_array)(stat['mean']['times'])
+        #creates array with the difference between line of best fit and mean value
+        tmp = [lobf_array[0] * i for i in stat['mean']['times']]
+        tmp += lobf_array[1]
+        tmp -= stat['mean']['trend']
+        mean_dif = tmp
+        tmp = [lobf_array[0] * i for i in stat['max']['times']]
+        tmp += lobf_array[1]
+        tmp -= stat['max']['trend']
+        max_dif = tmp
+        tmp = [lobf_array[0] * i for i in stat['min']['times']]
+        tmp += lobf_array[1]
+        tmp -= stat['min']['trend']
+        min_dif = tmp
+    elif fitted_function_description == 'constant':
+        drift_coef = 0
+        average_value = sum(stat['mean']['trend'])/float(len(stat['mean']['trend']))
+        fitted_function = np.poly1d(average_value)(stat['mean']['trend'])
+        mean_dif = np.subtract(stat['mean']['trend'],fitted_function)
+        max_dif = np.subtract(stat['max']['trend'],fitted_function)
+        min_dif = np.subtract(stat['min']['trend'],fitted_function)
+    else:
+        print('you must pick either "lobf" or "constant" with the "-f" flag')
+        exit()
+    mean_std_dev_array = [i-np.mean(mean_dif) for i in mean_dif]/np.std(mean_dif)
     print 'making plots'
     fig = plt.figure(figsize=(6.5,9))
     plt.suptitle('Characterization of diagnostic timing system 1PPS system, '\
-                 +location)
+                 + str(location))
     plt.subplots_adjust(top=0.88888888, bottom=0.1)
     ax1 = fig.add_subplot(311)
     ax1.set_title('Line of best fit versus offset')
     ax1.plot(stat['mean']['times'], stat['mean']['trend'], '#ff0000')
-    ax1.plot(stat['mean']['times'], mean_lobf, '#617d8d')
+    ax1.plot(stat['mean']['times'], fitted_function, '#617d8d')
+    ax1.fill_between(stat['mean']['times'], min_dif, max_dif, alpha = 0.5)
     ax1.set_xlabel('GPS time')
     ax1.set_ylabel('Offset [$\mu$s]')
     ax3 = fig.add_subplot(313)
