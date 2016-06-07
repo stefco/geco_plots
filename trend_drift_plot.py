@@ -22,7 +22,7 @@ args = parser.parse_args()
 location = vars(args)['l']
 fitted_function_description = 'lobf'
 if vars(args)['t'] == None:
-    trend = 'Mean'
+    trend = 'mean'
 else:
     trend = vars(args)['t']
 if vars(args)['f'] == 'constant' or vars(args)['f'] == 'lobf':
@@ -42,8 +42,8 @@ def make_time_series():
         #try, except loop makes sure the line contains only numbers. It then
         #checks that each line has 2 entries, and that the data does not look
         #anonymous
-        if line in valid_trend_extensions:
-            current_stat = statistics[line]
+        if line.replace("\n","") in valid_trend_extensions:
+            current_stat = statistics[line.replace("\n","")]
             print current_stat
         try:
             values = [float(x) for x in line.split('\t')]
@@ -64,6 +64,10 @@ def make_time_series():
                 print line
         except ValueError:
             pass
+    for i in valid_trend_extensions:
+        print i
+        print statistics[i]['times']
+        print statistics[i]['trend']
     return statistics
 
 
@@ -86,12 +90,13 @@ def make_plot(statistics_dictionary):
         mean_dif = tmp
         tmp = [lobf_array[0] * i for i in stat['max']['times']]
         tmp += lobf_array[1]
-        tmp -= stat['max']['trend']
+        tmp -= stat['mean']['trend']
         max_dif = tmp
         tmp = [lobf_array[0] * i for i in stat['min']['times']]
         tmp += lobf_array[1]
         tmp -= stat['min']['trend']
         min_dif = tmp
+        
     elif fitted_function_description == 'constant':
         drift_coef = 0
         average_value = sum(stat['mean']['trend'])/float(len(stat['mean']['trend']))
@@ -102,29 +107,32 @@ def make_plot(statistics_dictionary):
     else:
         print('you must pick either "lobf" or "constant" with the "-f" flag')
         exit()
+    
     mean_std_dev_array = [i-np.mean(mean_dif) for i in mean_dif]/np.std(mean_dif)
     print 'making plots'
     fig = plt.figure(figsize=(6.5,9))
     plt.suptitle('Characterization of diagnostic timing system 1PPS system, '\
                  + str(location))
     plt.subplots_adjust(top=0.88888888, bottom=0.1)
-    ax1 = fig.add_subplot(311)
+    ax1 = plt.subplot2grid((5,2),(0,0), colspan=2)
     ax1.set_title('Line of best fit versus offset')
     ax1.plot(stat['mean']['times'], stat['mean']['trend'], '#ff0000')
     ax1.plot(stat['mean']['times'], fitted_function, '#617d8d')
-    ax1.fill_between(stat['mean']['times'], min_dif, max_dif, alpha = 0.5)
+    ax1.fill_between(stat['max']['times'], min_dif, max_dif, alpha = 0.5)
     ax1.set_xlabel('GPS time')
     ax1.set_ylabel('Offset [$\mu$s]')
-    ax3 = fig.add_subplot(313)
+    ax3 = plt.subplot2grid((5,2), (1,0))
     n, bins, patches = plt.hist(mean_dif, 20, facecolor = '#139a0e')
     ax3.set_xlabel('$\Delta$t [$\mu$s]')
     ax3.set_ylabel('Frequency')
     ax3.set_title('histogram of the residual')
-    ax2 = fig.add_subplot(312)
+    ax2 = plt.subplot2grid((5,2), (1,1))
     ax2.plot(stat['mean']['times'], mean_dif)
     ax2.set_xlabel('GPS time [s]')
     ax2.set_title('Residual of the line of best fit')
     ax2.set_ylabel('Difference [$\mu$s]')
+    ax4 = plt.subplot2grid((5,2),(0,0))
+    ##ax4.plot(
     print drift_coef
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
