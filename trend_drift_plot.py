@@ -44,6 +44,10 @@ def make_time_series():
         #anonymous
         if line.replace("\n","") in valid_trend_extensions:
             current_stat = statistics[line.replace("\n","")]
+<<<<<<< HEAD
+=======
+            print current_stat
+>>>>>>> f6846746fd731f660ccc082143b27c17ad5237bc
         try:
             values = [float(x) for x in line.split('\t')]
             if len(values) == 2:
@@ -64,12 +68,18 @@ def make_time_series():
         except ValueError:
             pass
     for i in valid_trend_extensions:
+<<<<<<< HEAD
         if set(statistics[i]['times']) == set(statistics['mean']['times']):
             pass
         else:
             print i
             print('All trends must include the same set of times')
             exit()
+=======
+        print i
+        print statistics[i]['times']
+        print statistics[i]['trend']
+>>>>>>> f6846746fd731f660ccc082143b27c17ad5237bc
     return statistics
 
 def tconvert(tstr=""):
@@ -96,15 +106,21 @@ def make_plot(statistics_dictionary):
         mean_dif = tmp
         tmp = [lobf_array[0] * i for i in stat['max']['times']]
         tmp += lobf_array[1]
-        tmp -= stat['max']['trend']
+        tmp -= stat['mean']['trend']
         max_dif = tmp
         tmp = [lobf_array[0] * i for i in stat['min']['times']]
         tmp += lobf_array[1]
         tmp -= stat['min']['trend']
         min_dif = tmp
+<<<<<<< HEAD
     elif vars(args)['f'] == 'constant':
         fitted_function_description = 'average'
         notable_quantity = 'Average value'
+=======
+        
+    elif fitted_function_description == 'constant':
+        drift_coef = 0
+>>>>>>> f6846746fd731f660ccc082143b27c17ad5237bc
         average_value = sum(stat['mean']['trend'])/float(len(stat['mean']['trend']))
         notable_quantity_value = average_value
         fitted_function = np.poly1d(average_value)(stat['mean']['trend'])
@@ -114,6 +130,7 @@ def make_plot(statistics_dictionary):
     else:
         print('You must specify either "lobf" or "constant" with "-f" flag')
         exit()
+<<<<<<< HEAD
     ordered_max_time, ordered_max_trend = zip(*sorted(zip(stat['max']['time'\
         +'s'],stat['max']['trend'])))
     ordered_min_time, ordered_min_trend = zip(*sorted(zip(stat['min']['time'\
@@ -126,12 +143,17 @@ def make_plot(statistics_dictionary):
     mean_squared = [ i**2 for i in ordered_mean_trend]
     mean_variance_array = np.subtract(rms_sqaured,mean_squared)
     mean_std_dev_array = [i**0.5 for i in mean_variance_array]
+=======
+    
+    mean_std_dev_array = [i-np.mean(mean_dif) for i in mean_dif]/np.std(mean_dif)
+>>>>>>> f6846746fd731f660ccc082143b27c17ad5237bc
     print 'making plots'
     fig = plt.figure(figsize=(13,18))
     plt.suptitle('Characterization of diagnostic timing system 1PPS signal, '\
                  + str(location), fontsize = 20)
     plt.subplots_adjust(top=0.88888888, bottom=0.1)
     ax1 = plt.subplot2grid((5,2),(0,0), colspan=2)
+<<<<<<< HEAD
     ax1.set_title(fitted_function_description+' versus mean offset')
     ax1.plot(stat['mean']['times'], stat['mean']['trend'], 'blue', label = 'Me'\
         +'an minute trend')
@@ -189,6 +211,27 @@ def make_plot(statistics_dictionary):
     ax9.set_xlabel('Standard deviation')
     ax9.set_ylabel('Frequency')
     print(notable_quantity_value)
+=======
+    ax1.set_title('Line of best fit versus offset')
+    ax1.plot(stat['mean']['times'], stat['mean']['trend'], '#ff0000')
+    ax1.plot(stat['mean']['times'], fitted_function, '#617d8d')
+    ax1.fill_between(stat['max']['times'], min_dif, max_dif, alpha = 0.5)
+    ax1.set_xlabel('GPS time')
+    ax1.set_ylabel('Offset [$\mu$s]')
+    ax3 = plt.subplot2grid((5,2), (1,0))
+    n, bins, patches = plt.hist(mean_dif, 20, facecolor = '#139a0e')
+    ax3.set_xlabel('$\Delta$t [$\mu$s]')
+    ax3.set_ylabel('Frequency')
+    ax3.set_title('histogram of the residual')
+    ax2 = plt.subplot2grid((5,2), (1,1))
+    ax2.plot(stat['mean']['times'], mean_dif)
+    ax2.set_xlabel('GPS time [s]')
+    ax2.set_title('Residual of the line of best fit')
+    ax2.set_ylabel('Difference [$\mu$s]')
+    ax4 = plt.subplot2grid((5,2),(0,0))
+    ##ax4.plot(
+    print drift_coef
+>>>>>>> f6846746fd731f660ccc082143b27c17ad5237bc
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.1, right=0.95, top=0.92, bottom=0.05)
     fig.savefig('charicterization_of_diagnostic_timing_system_from_'+tconvert(\
