@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 
-##This does not 
-valid_trend_extensions = ['min', 'max', 'mean', 'rms']
+used_trend_extensions = ['min', 'max', 'mean', 'rms']
+valid_trend_extensions = ['min', 'max', 'mean', 'rms', 'n']
 micros_per_second = 1000000
 
 parser = argparse.ArgumentParser()
@@ -49,10 +49,10 @@ def make_time_series():
             if len(values) == 2:
                 if values[1] == 0:
                     print('It seems that the signal was off during some pa'
-                          'rt of ' + str(values[0]))
+                          +'rt of ' + str(values[0]))
                 elif abs(values[1]) * micros_per_second < .01:
                     print('The data at ' + str(values[0]) + ' is anomalous'
-                          'ly small.')
+                          +'ly small.')
                 elif abs(values[1]) * micros_per_second > 4:
                     print('The data at ' + str(values[0]) + ' is anomalously la'
                           'rge.')
@@ -63,7 +63,7 @@ def make_time_series():
                 print line
         except ValueError:
             pass
-    for i in valid_trend_extensions:
+    for i in used_trend_extensions:
         if set(statistics[i]['times']) == set(statistics['mean']['times']):
             pass
         else:
