@@ -63,13 +63,11 @@ def make_time_series():
                 print line
         except ValueError:
             pass
-    for i in used_trend_extensions:
-        if set(statistics[i]['times']) == set(statistics['mean']['times']):
-            pass
-        else:
-            print i
-            print('All trends must include the same set of times')
-            exit()
+    if set(statistics['rms']['times']) == set(statistics['mean']['times']):
+        pass
+    else:
+        print('All trends must include the same set of times')
+        exit()
     return statistics
 
 def tconvert(tstr=""):
