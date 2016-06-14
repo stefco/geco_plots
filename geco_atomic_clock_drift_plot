@@ -12,12 +12,21 @@ micros_per_second = 1000000
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', help='the location of the trend data being used')
-args = parser.parse_args()
-location = vars(args)['l']
+parser.add_argument('--min', help='The lower limit on the absolute value of'\
+    +'the time difference before the data is considered anomalous. The'\
+    +' default is 0.01', type=float, default=0.01)
+parser.add_argument('--max', help='The upper limit on the absolute value of'\
+    +'the time difference before the data is considered anomalous. The'\
+    +' default is 4', type=float, default=4)
+args = vars(parser.parse_args())
+location = args['l']
+
 
 #Takes input from geco_trend_dump and makes an array of times and corresponding
 #trend values for that time
 def make_time_series():
+    lower_limit = args['min']
+    upper_limit = args['max']
     times = []
     trend = []
     for line in sys.stdin:
@@ -31,10 +40,10 @@ def make_time_series():
                 if values[1] == 0:
                     print 'It seems that the signal was off during some part o'\
                         'f ' + str(values[0])
-                elif abs(values[1]) * micros_per_second < .01:
+                elif abs(values[1]) * micros_per_second < lower_limit:
                     print 'The data at ' + str(values[0]) + ' is anomalously s'\
                         'mall.'
-                elif abs(values[1]) * micros_per_second > 4:
+                elif abs(values[1]) * micros_per_second > upper_limit:
                     print 'The data at ' + str(values[0]) + ' is anomalously l'\
                         'arge.'
                 else:
@@ -57,7 +66,7 @@ def make_plot(x_axis, y_axis):
     #creates array with slope and y-intercept of line of best fit
     lobf_array = np.polyfit(x_axis, y_axis, 1)
     #dimensionless quantity that characterizes drift
-    drift_coef = lobf_array[0]/micros_per_second
+    drift_coef = str(lobf_array[0]/micros_per_second)
     y_axis_lobf = np.poly1d(lobf_array)(x_axis)
     tmp = [lobf_array[0] * i for i in x_axis]
     tmp += lobf_array[1]
@@ -71,7 +80,7 @@ def make_plot(x_axis, y_axis):
     ax1.set_title('Line of best fit versus offset')
     ax1.plot(x_axis, y_axis, '#ff0000')
     ax1.plot(x_axis, y_axis_lobf, '#617d8d')
-    ax1.text(0.01, 0.05, 'Drift coefficient = '+str(drift_coef), \
+    ax1.text(0.01, 0.05,'Drift coefficient = ' + drift_coef, \
         transform=ax1.transAxes, bbox=dict(facecolor='#99ccff',\
         boxstyle='round', alpha=0.25))
     ax1.set_xlabel('GPS time')
@@ -86,6 +95,7 @@ def make_plot(x_axis, y_axis):
     ax2.set_xlabel('GPS time')
     ax2.set_title('Residual of the line of best fit')
     ax2.set_ylabel('Difference [$\mu$s]')
+    print('Drift coefficient')
     print drift_coef
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
