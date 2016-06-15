@@ -18,15 +18,25 @@ parser.add_argument('--min', help='The lower limit on the absolute value of'\
 parser.add_argument('--max', help='The upper limit on the absolute value of'\
     +'the time difference before the data is considered anomalous. The'\
     +' default is 4', type=float, default=4)
+parser.add_argument('-i', action='store_true', help='Include outliers. use th'\
+    +'is flag if you want this program to ignore anomalously large or small d'\
+    +'ata and plot all points')
 args = vars(parser.parse_args())
 location = args['l']
+include_outliers = args['i']
 
 
 #Takes input from geco_trend_dump and makes an array of times and corresponding
 #trend values for that time
 def make_time_series():
+    anomalous={}
+    anomalous_data_types=['data too large','data too small','system off']
     lower_limit = args['min']
     upper_limit = args['max']
+    for data_type in anomalous_data_types:
+         anomalous[data_type]={}
+         anomalous[data_type]['times']=[]
+         anomalous[data_type]['values']=[]
     times = []
     trend = []
     for line in sys.stdin:
@@ -37,22 +47,37 @@ def make_time_series():
         try:
             values = [float(x) for x in line.split('\t')]
             if len(values) == 2:
-                if values[1] == 0:
-                    print 'It seems that the signal was off during some part o'\
-                        'f ' + str(values[0])
-                elif abs(values[1]) * micros_per_second < lower_limit:
-                    print 'The data at ' + str(values[0]) + ' is anomalously s'\
-                        'mall.'
-                elif abs(values[1]) * micros_per_second > upper_limit:
-                    print 'The data at ' + str(values[0]) + ' is anomalously l'\
-                        'arge.'
-                else:
+                if not include_outliers:
+                    if values[1] == 0:
+                        anomalous['system off']['times'].append(values[0])
+                        anomalous['system off']['values'].append(values[1])
+                    elif abs(values[1]) * micros_per_second < lower_limit:
+                        anomalous['data too small']['times'].append(values[0])
+                        anomalous['data too small']['values'].append(values[1])
+                    elif abs(values[1]) * micros_per_second > upper_limit:
+                        anomalous['data too large']['times'].append(values[0])
+                        anomalous['data too large']['values'].append(values[1])
+                    else:
+                        times.append(values[0])
+                        trend.append(values[1])
+                elif include_outliers:
                     times.append(values[0])
                     trend.append(values[1])
             else:
                 print line
         except ValueError:
             pass
+    start_time = tconvert(int(min(times))).replace(' GMT','')
+    end_time = tconvert(int(max(times))).replace(' GMT','')
+    if not include_outliers:
+        with open('anomalous_data_from_'+start_time.replace(' ','_')+\
+            '_until_'+end_time.replace(' ','_')+'.txt', 'w') as outfile:
+            for data_type in anomalous_data_types:
+                outfile.write(data_type+'\n')
+                outfile.write('time        '+'\t'+'value\n') 
+                for i in range(len(anomalous[data_type]['times'])):
+                    outfile.write(str(anomalous[data_type]['times'][i])+'\t'\
+                        +str(anomalous[data_type]['values'][i])+'\n')
     return (times, trend)
 
 def tconvert(tstr=""):
@@ -71,7 +96,9 @@ def make_plot(x_axis, y_axis):
     tmp = [lobf_array[0] * i for i in x_axis]
     tmp += lobf_array[1]
     tmp -= y_axis
+    tmp = np.multiply(-1,tmp)
     y_dif = tmp
+    std_dev_residual = np.std(y_dif)
     print 'making plots'
     fig = plt.figure(figsize=(13,18))
     plt.suptitle('Drift of cesium clock, from '+start_time+' until '+end_time+location, fontsize=20)
@@ -89,7 +116,12 @@ def make_plot(x_axis, y_axis):
     n, bins, patches = plt.hist(y_dif, 20, facecolor = '#139a0e')
     ax3.set_xlabel('$\Delta$t [$\mu$s]')
     ax3.set_ylabel('Frequency')
+    ax3.axvline(x=std_dev_residual, linestyle='dashed')
+    ax3.axvline(x=-1*std_dev_residual, linestyle='dashed')
     ax3.set_title('histogram of the residual')
+    ax3.text(0.01, 0.95,'Stanard deviation = ' + str(std_dev_residual)\
+        +'$\mu$s', transform=ax3.transAxes, bbox=dict(facecolor='#99ccff',\
+        boxstyle='round', alpha=0.25))
     ax2 = fig.add_subplot(312)
     ax2.plot(x_axis, y_dif)
     ax2.set_xlabel('GPS time')
@@ -99,7 +131,8 @@ def make_plot(x_axis, y_axis):
     print drift_coef
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
-    fig.savefig('cesium_clock_drift_from_'+start_time.replace(' ','_')+'_until_'+end_time.replace(' ','_')+'.png', dpi=300)
+    fig.savefig('cesium_clock_drift_from_'+start_time.replace(' ','_')+\
+        '_until_'+end_time.replace(' ','_')+'.png', dpi=300)
 
 def main():
     values = make_time_series()
