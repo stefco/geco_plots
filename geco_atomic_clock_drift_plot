@@ -9,6 +9,7 @@ import numpy as np
 import argparse
 
 micros_per_second = 1000000
+anomalous_data_types=['data too large','data too small','system off']
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', help='the location of the trend data being used')
@@ -30,7 +31,6 @@ include_outliers = args['i']
 #trend values for that time
 def make_time_series():
     anomalous={}
-    anomalous_data_types=['data too large','data too small','system off']
     lower_limit = args['min']
     upper_limit = args['max']
     for data_type in anomalous_data_types:
@@ -69,15 +69,14 @@ def make_time_series():
             pass
     start_time = tconvert(int(min(times))).replace(' GMT','')
     end_time = tconvert(int(max(times))).replace(' GMT','')
-    if not include_outliers:
-        with open('anomalous_data_from_'+start_time.replace(' ','_')+\
-            '_until_'+end_time.replace(' ','_')+'.txt', 'w') as outfile:
-            for data_type in anomalous_data_types:
-                outfile.write(data_type+'\n')
-                outfile.write('time        '+'\t'+'value\n') 
-                for i in range(len(anomalous[data_type]['times'])):
-                    outfile.write(str(anomalous[data_type]['times'][i])+'\t'\
-                        +str(anomalous[data_type]['values'][i])+'\n')
+    with open('anomalous_data_from_'+start_time.replace(' ','_')+\
+        '_until_'+end_time.replace(' ','_')+'.txt', 'w') as outfile:
+        for data_type in anomalous_data_types:
+            outfile.write(data_type+'\n')
+            outfile.write('time        '+'\t'+'value\n') 
+            for i in range(len(anomalous[data_type]['times'])):
+                outfile.write(str(anomalous[data_type]['times'][i])+'\t'\
+                    +str(anomalous[data_type]['values'][i])+'\n')
     return (times, trend)
 
 def tconvert(tstr=""):
