@@ -11,6 +11,7 @@ import argparse
 used_trend_extensions = ['min', 'max', 'mean', 'rms']
 valid_trend_extensions = ['min', 'max', 'mean', 'rms', 'n']
 micros_per_second = 1000000
+anomalous_data_types = ['data too large','data too small','system off']
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l',help='[REQUIRED] the location of the trend data being'\
@@ -21,21 +22,31 @@ parser.add_argument('-f', help='[REQUIRED] specifies whether to use the'\
     +'and the latter for the GPS clock.')
 parser.add_argument('-t', help='the trend, i.e. min, mean, or max. Default is '\
     +'mean')
-args = parser.parse_args()
-location = vars(args)['l']
-if vars(args)['t'] == None:
+parser.add_argument('-i', action='store_true', help='Include outliers. use th'\
+    +'is flag if you want this program to ignore anomalously large or small d'\
+    +'ata and plot all points')
+args = vars(parser.parse_args())
+location = args['l']
+include_outliers = args['i']
+if args['t'] == None:
     trend = 'mean'
 else:
-    trend = vars(args)['t']
+    trend = args['t']
 
 #Takes input from geco_trend_dump and makes an array of times and corresponding
 #trend values for that time
 def make_time_series():
     statistics = {}
+    anomalous = {}
     for trend_extension in valid_trend_extensions:
         statistics[trend_extension] = {}
+        anomalous[trend_extension] = {}
         statistics[trend_extension]['times'] = []
         statistics[trend_extension]['trend'] = []
+        for data_type in anomalous_data_types:
+            anomalous[trend_extension][data_type] = {}
+            anomalous[trend_extension][data_type]['times'] = []
+            anomalous[trend_extension][data_type]['values'] = []
     current_stat = statistics['mean']
     for line in sys.stdin:
         #reads each line of the stdin from geco_trend_dump. for each line, the
@@ -43,26 +54,44 @@ def make_time_series():
         #checks that each line has 2 entries, and that the data does not look
         #anonymous
         if line.replace("\n","") in valid_trend_extensions:
-            current_stat = statistics[line.replace("\n","")]
+            trend_type = line.replace("\n","")
+            current_stat = statistics[trend_type]
+            
         try:
             values = [float(x) for x in line.split('\t')]
             if len(values) == 2:
-                if values[1] == 0:
-                    print('It seems that the signal was off during some pa'
-                          +'rt of ' + str(values[0]))
-                elif abs(values[1]) * micros_per_second < .01:
-                    print('The data at ' + str(values[0]) + ' is anomalous'
-                          +'ly small.')
-                elif abs(values[1]) * micros_per_second > 4:
-                    print('The data at ' + str(values[0]) + ' is anomalously la'
-                          'rge.')
+                if not include_outliers:
+                    if values[1] == 0:
+                        anomalous[trend_type]['system off']['times'].append(values[0])
+                        anomalous[trend_type]['system off']['values'].append(values[1])
+                    elif abs(values[1]) * micros_per_second < .01:
+                        anomalous[trend_type]['data too small']['times'].append(values[0])
+                        anomalous[trend_type]['data too small']['values'].append(values[1])
+                    elif abs(values[1]) * micros_per_second > 4:
+                        anomalous[trend_type]['data too large']['times'].append(values[0])
+                        anomalous[trend_type]['data too large']['values'].append(values[1])
+                    else:
+                        current_stat['times'].append(values[0])
+                        current_stat['trend'].append(values[1])
                 else:
-                    current_stat['times'].append(values[0])
-                    current_stat['trend'].append(values[1])
+                    times.append(values[0])
+                    trend.append(values[1])
             else:
                 print line
         except ValueError:
             pass
+    start_time = tconvert(int(min(statistics['mean']['times']))).replace(' GMT','')
+    end_time = tconvert(int(max(statistics['mean']['times']))).replace(' GMT','')
+    with open('anomalous_data_from_'+start_time.replace(' ','_')+\
+        '_until_'+end_time.replace(' ','_')+'.txt', 'w') as outfile:
+        for trend_extension in valid_trend_extensions:
+            outfile.write(trend_extension+'\n')
+            for data_type in anomalous_data_types:
+                outfile.write(data_type+'\n')
+                outfile.write('time        '+'\t'+'value\n')
+                for i in range(len(anomalous[trend_extension][data_type]['times'])):
+                    outfile.write(str(anomalous[trend_extension][data_type]['times'][i])+'\t'\
+                        +str(anomalous[trend_extension][data_type]['values'][i])+'\n')
     if set(statistics['rms']['times']) == set(statistics['mean']['times']):
         pass
     else:
@@ -71,7 +100,7 @@ def make_time_series():
     return statistics
 
 def tconvert(tstr=""):
-    return os.popen("lalapps_tconvert " + tstr).read()
+    return os.popen("lalapps_tconvert " + str(tstr)).read()
 
 def make_plot(statistics_dictionary):
     stat = statistics_dictionary
@@ -79,7 +108,7 @@ def make_plot(statistics_dictionary):
     for extension in valid_trend_extensions:
         stat[extension]['trend'] = [i * micros_per_second for i in\
             stat[extension]['trend']]
-    if vars(args)['f'] == 'lobf':
+    if args['f'] == 'lobf':
         fitted_function_description = 'line of best fit'
         #creates array with slope and y-intercept of line of best fit of the mean
         lobf_array = np.polyfit(stat['mean']['times'], stat['mean']['trend'], 1)
@@ -100,7 +129,7 @@ def make_plot(statistics_dictionary):
         tmp += lobf_array[1]
         tmp -= stat['min']['trend']
         min_dif = tmp
-    elif vars(args)['f'] == 'constant':
+    elif args['f'] == 'constant':
         fitted_function_description = 'average'
         notable_quantity = 'Average value'
         average_value = sum(stat['mean']['trend'])/float(len(stat['mean']['trend']))
@@ -124,6 +153,10 @@ def make_plot(statistics_dictionary):
     mean_squared = [ i**2 for i in ordered_mean_trend]
     mean_variance_array = np.subtract(rms_sqaured,mean_squared)
     mean_std_dev_array = [i**0.5 for i in mean_variance_array]
+    std_dev_max_dif = np.std(max_dif)
+    std_dev_min_dif = np.std(min_dif)
+    std_dev_mean_dif = np.std(mean_dif)
+    std_dev_residual = np.std(mean_dif)
     print 'making plots'
     fig = plt.figure(figsize=(13,18))
     plt.suptitle('Characterization of diagnostic timing system 1PPS signal, '\
@@ -145,6 +178,8 @@ def make_plot(statistics_dictionary):
     ax1.legend(loc='best', fancybox=True, framealpha=0.5)
     ax3 = plt.subplot2grid((5,2), (2,0))
     n, bins, patches = plt.hist(mean_dif, 20, facecolor='blue')
+    ax3.axvline(x=std_dev_mean_dif, linestyle='dashed')
+    ax3.axvline(x=-1*std_dev_max_dif, linestyle='dashed')
     ax3.set_xlabel('$\Delta$t [$\mu$s]')
     ax3.set_ylabel('Frequency')
     ax3.set_title('Histogram of deviations')
@@ -168,11 +203,15 @@ def make_plot(statistics_dictionary):
     ##ax5.set_ylabel('Offset [$\mu$s]')
     ax6 = plt.subplot2grid((5,2), (4,0))
     n, bins, patches = plt.hist(min_dif, 20, facecolor='green')
+    ax6.axvline(x=std_dev_min_dif, linestyle='dashed')
+    ax6.axvline(x=-1*std_dev_min_dif, linestyle='dashed')
     ax6.set_xlabel('$\Delta$t [$\mu$s]')
     ax6.set_ylabel('Frequency')
     ax6.set_title('Deviation of min from '+fitted_function_description)
     ax7 = plt.subplot2grid((5,2), (4,1))
     n, bins, patches = plt.hist(max_dif, 20, facecolor='red')
+    ax7.axvline(x=std_dev_max_dif, linestyle='dashed')
+    ax7.axvline(x=-1*std_dev_max_dif, linestyle='dashed')
     ax7.set_xlabel('$\Delta$t [$\mu$s]')
     ax7.set_ylabel('Frequency')
     ax7.set_title('Deviation of max from '+fitted_function_description)
