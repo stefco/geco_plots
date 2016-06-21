@@ -70,7 +70,7 @@ def make_time_series():
     start_time = tconvert(int(min(times))).replace(' GMT','')
     end_time = tconvert(int(max(times))).replace(' GMT','')
     with open('anomalous_data_from_'+start_time.replace(' ','_')+\
-        '_until_'+end_time.replace(' ','_')+'.txt', 'w') as outfile:
+        '_until_'+end_time.replace(' ','_')+location+'.txt', 'w') as outfile:
         for data_type in anomalous_data_types:
             outfile.write(data_type+'\n')
             outfile.write('time        '+'\t'+'value\n') 
@@ -131,7 +131,7 @@ def make_plot(x_axis, y_axis):
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
     fig.savefig('cesium_clock_drift_from_'+start_time.replace(' ','_')+\
-        '_until_'+end_time.replace(' ','_')+'.png', dpi=300)
+        '_until_'+end_time.replace(' ','_')+location+'.png', dpi=300)
 
 def main():
     values = make_time_series()
