@@ -18,18 +18,12 @@ parser.add_argument('-f', help='[REQUIRED] specifies whether to use the'\
     +'of best fit (with \'lobf\') or the mean of the trend (with \'constant\'' \
     +') to find the residual. the former might be used for a cesium clock, '\
     +'and the latter for the GPS clock.')
-parser.add_argument('-t', help='the trend, i.e. min, mean, or max. Default is '\
-    +'mean')
 parser.add_argument('-i', action='store_true', help='Include outliers. use th'\
     +'is flag if you want this program to ignore anomalously large or small d'\
     +'ata and plot all points')
 args = vars(parser.parse_args())
 location = args['l']
 include_outliers = args['i']
-if args['t'] == None:
-    trend = 'mean'
-else:
-    trend = args['t']
 
 def make_time_series():
     array_dictionary = {}
