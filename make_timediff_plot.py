@@ -7,55 +7,27 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import collections
+import argparse
 
 bit_rate = 16
 micros_per_second= 1000000
 second_per_week = 604800
 arg_n = len(sys.argv)
 
-#exit if no arguments
-if arg_n == 1:
-    print 'Not enough arguments.'
-    print 'For a input format type \'make_timediff_plot.py -h\''
-    print 'For channels and directory names type \'make_timediff_plot.py -c\''
-    exit(1)
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', help='Start time')
+parser.add_argument('-e', help='End time')
+parser.add_argument('-i', action='store_true', help='Include outliers. use th'\
+    +'is flag if you want this program to ignore anomalously large or small d'\
+    +'ata and plot all points')
+parser.add_argument('-p', help='Path to directory containing frame files')
+parser.add_argument('-l', help='Location')
+args = vars(parser.parse_args())
 
-elif sys.argv[1] == '-h':
-    print 'python make_timediff_plot.py \'start date\' \'end date\' [input_directory]'
-    print 'Enter dates as Month Day, Year hh:mm:ss'
-    print 'If you do not specifiy an input directory the program will look for'
-    print ' files in the current directory'
-    exit()
-
-elif sys.srgv[1] == '-c':
-    print 'hanford_cesium_msr    = H1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_1'
-    print 'hanford_cesium_ex     = H1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
-    print 'hanford_cesium_ey     = H1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
-    print 'hanford_nts_msr       = H1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_2'
-    print 'hanford_cnsii_ex      = H1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
-    print 'hanford_cnsii_ey      = H1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
-    print 'livingston_cesium_msr = L1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_1'
-    print 'livingston_cesium_ex  = L1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
-    print 'livingston_cesium_ey  = L1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_1'
-    print 'livingston_nts_msr    = L1:SYS-TIMING_C_MA_A_PORT_2_SLAVE_CFC_TIMEDIFF_2'
-    print 'livingston_cnsii_ex   = L1:SYS-TIMING_X_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
-    print 'livingston_cnsii_ey   = L1:SYS-TIMING_Y_FO_A_PORT_9_SLAVE_CFC_TIMEDIFF_3'
-    print 'hanford_duotone_ex    = H1:CAL-PCALX_FPGA_DTONE_IN1_DQ'
-    print 'hanford_duotone_ey    = H1:CAL-PCALY_FPGA_DTONE_IN1_DQ'
-    print 'livingston_duotone_ex    = L1:CAL-PCALX_FPGA_DTONE_IN1_DQ'
-    print 'livingston_duotone_ex    = L1:CAL-PCALY_FPGA_DTONE_IN1_DQ'
-    print 'hanford_irigb_ex      = H1:CAL-PCALX_IRIGB_OUT_DQ'
-    print 'hanford_irigb_ey      = H1:CAL-PCALY_IRIGB_OUT_DQ'
-    print 'livingston_irigb_ex      = L1:CAL-PCALX_IRIGB_OUT_DQ'
-    print 'livingston_irigb_ey      = L1:CAL-PCALY_IRIGB_OUT_DQ'
-    print 'hanford_duotone_filtered_ex = H1:CAL-PCALX_DAC_FILT_DTONE_OUT_DQ'
-    print 'hanford_duotone_filtered_ey = H1:CAL-PCALY_DAC_FILT_DTONE_OUT_DQ'
-    exit()
-
-else:
-    start = sys.argv[1]
-    end = sys.argv[2]
-    channel = sys.argv[3]
+include_outliers = args['i']
+location = args['l']
+start = args['s']
+end = args['e']
 
 # remove the first 6 lines and the string "Data: "
 def remove_header_and_text(string):
@@ -94,8 +66,11 @@ def make_times_list(s_time , e_time):
 
 #Makes arrays of min max and mean of each frame file is_data_good approves
 def min_max_mean(s_time, e_time):
-    good_indeces = is_data_good(s_time, e_time)
     t = make_times_list(s_time, e_time)
+    if not include_outliers:
+        good_indeces = is_data_good(s_time, e_time)
+    else:
+        good_indeces = [1 for i in range(len(t))]
     print len(good_indeces)
     time_array = np.zeros(len(t))
     min_array = np.zeros(len(t))
@@ -126,10 +101,10 @@ def min_max_mean(s_time, e_time):
 
 #Defines the pa  th where the file is from input
 def make_path_name(file_name):
-    if arg_n == 3:
+    try:
+        path = args['p']+str(file_name) + '.dat'
+    except KeyError:
         path = str(file_name) + '.dat'
-    elif arg_n  == 4:
-        path = channel + '/' + str(file_name) + ".dat"
     return path
 
 #Creates an array whose vallues are 0 or 1 depending on if the corresponding
@@ -148,7 +123,6 @@ def is_data_good(start_time, end_time):
             with open(path, 'r') as infile:
                 infile_array = np.fromstring(remove_header_and_text(infile.read()) \
                     , sep = ',')
-<<<<<<< HEAD
                 if np.mean(infile_array) == 0:
                     print 'It seems there was no signal at ' + str(time)
                 elif abs(min(infile_array)) * micros_per_second< .01:
@@ -161,37 +135,10 @@ def is_data_good(start_time, end_time):
     return good_files
 
 def make_timediff_plot(x_axis, y_axis):
+    print(min(x_axis), max(x_axis))
     y_axis = y_axis * micros_per_second
     mmavg = min_max_mean(start, end)
     print 'generating line of best fit'
-=======
-                if np.mean(infile_array) < 0:
-                    lower_lim = abs(max(infile_array))
-                    upper_lim = abs(min(infile_array))
-                elif np.mean(infile_array) > 0:
-                    lower_lim = min(infile_array)
-                    upper_lim = max(infile_array)
-                elif np.mean(infile_array) == 0:
-                    print 'It seems there was no signal at ' + str(time)
-                    current_pos +=1
-                if lower_lim * second_to_micros > 0.01 and upper_lim * \
-                    second_to_micros < 4:
-                    good_files[current_pos] = 1
-                    current_pos += 1
-                elif lower_lim * second_to_micros < 0.01:
-                    print 'Signal at ' + str(time) + ' is anomalously small'
-                    current_pos += 1
-                elif upper_lim * second_to_micros > 4:
-                    print 'Signal at ' + str(time) + ' is anomalously large'
-                    current_pos += 1
-    return good_files
-
-def make_timediff_plot(x_axis, y_axis):
-    print('making plots')
-    print len(y_axis)
-    y_axis = y_axis * second_to_micros
-    mmavg = min_max_mean(start, end)
->>>>>>> 259e104e1cc1044e3038cb5256ddbc27a0685135
     # Creates an array for a line of best fit from the mean of each frame file
     lobf_array = np.polyfit(mmavg[0], mmavg[3], 1)
     x_axis_lobf = mmavg[0]
@@ -213,12 +160,12 @@ def make_timediff_plot(x_axis, y_axis):
     plt.legend(loc='best', fancybox=True, framealpha=0.5)
     plt.xlabel('GPS Time')
     plt.ylabel('Offset [$\mu$s]')
-    plt.title('Time difference from ' + start + ' until ' + end)
+    plt.title('Time difference from ' + start + ' until ' + end+','+location)
     #makes histogram of the difference between data and line of best fit
     plt.subplot(212)
     n, bins, patches = plt.hist(y_dif, 20, facecolor = '#139a0e')
     plt.xlabel('Time difference [$\mu$s]')
-    plt.savefig('Time difference from ' + start + ' until ' + end + '.png')
+    plt.savefig('Time difference from ' + start + ' until ' + end +'_'+location+ '.png')
 
 #returns a duple whose elements are the gps times and the corresponding file
 #value from the input file
