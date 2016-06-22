@@ -21,9 +21,14 @@ parser.add_argument('-f', help='[REQUIRED] specifies whether to use the'\
 parser.add_argument('-i', action='store_true', help='Include outliers. use th'\
     +'is flag if you want this program to ignore anomalously large or small d'\
     +'ata and plot all points')
+parser.add_argument('--title', help='Allows the specification of a custom tit'\
+    +'le for the plot title and file name. Default is "Characterization of dia'\
+    +'gnostic timing system 1PPS signal"', default='Characterization of diagno'\
+    +'stic timing system 1PPS signal')
 args = vars(parser.parse_args())
 location = args['l']
 include_outliers = args['i']
+title = args['title']
 
 def make_time_series():
     array_dictionary = {}
@@ -94,8 +99,8 @@ def make_plot(statistics_dictionary, start_time, end_time):
     std_dev_residual = np.std(mean_dif)
     print 'making plots'
     fig = plt.figure(figsize=(13,18))
-    plt.suptitle('Characterization of diagnostic timing system 1PPS signal, '\
-                 + str(location), fontsize = 20)
+    plt.suptitle(title+', '+ str(location)+'\n'+ start_time+', '+end_time,\
+        fontsize = 20)
     plt.subplots_adjust(top=0.88888888, bottom=0.1)
     ax1 = plt.subplot2grid((5,2),(0,0), colspan=2)
     ax1.set_title(fitted_function_description+' versus mean offset')
@@ -163,8 +168,8 @@ def make_plot(statistics_dictionary, start_time, end_time):
     print(notable_quantity_value)
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.1, right=0.95, top=0.92, bottom=0.05)
-    fig.savefig('charicterization_of_diagnostic_timing_system,_'+start_time\
-        +',_'+end_time+location+'.png', dpi=300)
+    fig.savefig(title.replace(' ','_')+'_'+start_time.replace(' ','_')\
+        +',_'+end_time.replace(' ','_')+location+'.png', dpi=300)
 
 def find_start_time_end_time(time_array):
     start_time=tconvert(int(min(time_array))).replace('GMT','').replace('\n','')
