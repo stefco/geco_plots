@@ -173,7 +173,7 @@ def make_plot(statistics_dictionary, start_time, end_time):
 
 def find_start_time_end_time(time_array):
     start_time=tconvert(int(min(time_array))).replace('GMT','').replace('\n','')
-    end_time=tconvert(int(min(time_array))).replace('GMT', '').replace('\n','')
+    end_time=tconvert(int(max(time_array))).replace('GMT', '').replace('\n','')
     return start_time, end_time
 
 def main():
