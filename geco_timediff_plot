@@ -38,7 +38,7 @@ def make_time_series():
 def tconvert(tstr=""):
     return os.popen("lalapps_tconvert " + str(tstr)).read()
 
-def make_plot(statistics_dictionary):
+def make_plot(statistics_dictionary, start_time, end_time):
     stat = statistics_dictionary
     if args['f'] == 'lobf':
         fitted_function_description = 'line of best fit'
@@ -163,13 +163,17 @@ def make_plot(statistics_dictionary):
     print(notable_quantity_value)
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.1, right=0.95, top=0.92, bottom=0.05)
-    fig.savefig('charicterization_of_diagnostic_timing_system_from_'+tconvert(\
-        str(int(stat['times'][0]))).replace(" ", "_").replace("_GMT",""\
-        )+'_until_'+tconvert(str(int(stat['times'][-1]))).replace(" ",\
-        "_").replace("_GMT","")+'.png', dpi=300)
+    fig.savefig('charicterization_of_diagnostic_timing_system,_'+start_time\
+        +',_'+end_time+location+'.png', dpi=300)
+
+def find_start_time_end_time(time_array):
+    start_time=tconvert(int(min(time_array))).replace('GMT','').replace('\n','')
+    end_time=tconvert(int(min(time_array))).replace('GMT', '').replace('\n','')
+    return start_time, end_time
 
 def main():
     values = make_time_series()
-    make_plot(values)
+    start_time, end_time = find_start_time_end_time(values['times'])
+    make_plot(values, start_time, end_time)
 
 main()
