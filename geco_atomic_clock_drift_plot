@@ -13,6 +13,8 @@ anomalous_data_types=['data too large','data too small','system off']
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', help='the location of the trend data being used')
+parser.add_argument('-c', nargs='+', type=float, help='times when the clock '
+    +'was recalibrated')
 parser.add_argument('--min', help='The lower limit on the absolute value of'\
     +'the time difference before the data is considered anomalous. The'\
     +' default is 0.01', type=float, default=0.01)
@@ -25,6 +27,8 @@ parser.add_argument('-i', action='store_true', help='Include outliers. use th'\
 args = vars(parser.parse_args())
 location = args['l']
 include_outliers = args['i']
+calibration_times = args['c']
+print calibration_times
 
 
 #Takes input from geco_trend_dump and makes an array of times and corresponding
@@ -83,8 +87,8 @@ def tconvert(tstr=""):
     return os.popen("lalapps_tconvert " + str(tstr)).read()
 
 def make_plot(x_axis, y_axis):
-    start_time = tconvert(int(min(x_axis))).replace(' GMT','')
-    end_time = tconvert(int(max(x_axis))).replace(' GMT','')
+    start_time = tconvert(int(min(x_axis))).replace(' GMT','').replace('\n','')
+    end_time = tconvert(int(max(x_axis))).replace(' GMT','').replace('\n','')
     #converts y_axis time to microseconds from seconds
     y_axis = [i * micros_per_second for i in y_axis]
     #creates array with slope and y-intercept of line of best fit
@@ -100,7 +104,8 @@ def make_plot(x_axis, y_axis):
     std_dev_residual = np.std(y_dif)
     print 'making plots'
     fig = plt.figure(figsize=(13,18))
-    plt.suptitle('Drift of cesium clock, from '+start_time+' until '+end_time+location, fontsize=20)
+    plt.suptitle('Drift of cesium clock, from '+start_time+'\nuntil '+end_time
+                 + 'at\n' + location, fontsize=20)
     plt.subplots_adjust(top=0.88888888, bottom=0.1)
     ax1 = fig.add_subplot(311)
     ax1.set_title('Line of best fit versus offset')
@@ -130,8 +135,15 @@ def make_plot(x_axis, y_axis):
     print drift_coef
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1)
     plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
-    fig.savefig('cesium_clock_drift_from_'+start_time.replace(' ','_')+\
-        '_until_'+end_time.replace(' ','_')+location+'.png', dpi=300)
+    # add vertical lines at recalibration times
+    for t in calibration_times:
+        ax1.axvline(x=t, alpha=0.5, color='#718EA4', dashes=[5,2],
+                    label='Calibrated at GPS time ' + str(t))
+        ax2.axvline(x=t, alpha=0.5, color='#718EA4', dashes=[5,2],
+                    label='Calibrated at GPS time ' + str(t))
+    fig.savefig('cesium_clock_drift_from_'+start_time.replace(' ','_')+
+        '_until_'+end_time.replace(' ','_')+'_at_'+
+        location.replace(' ','_')+'.png', dpi=300)
 
 def main():
     values = make_time_series()
