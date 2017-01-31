@@ -1,0 +1,3 @@
+[submodule "geco_data"]
+	path = geco_data
+	url = https://github.com/stefco/geco_data.git
